@@ -1,50 +1,71 @@
 package com.example.youcoaster;
 
-import java.net.URISyntaxException;
-
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import android.content.Context;
 import android.content.Intent;
 import android.media.MediaPlayer;
 import android.media.MediaPlayer.OnPreparedListener;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Vibrator;
 import android.util.Log;
 import android.view.ViewGroup.LayoutParams;
-import android.widget.FrameLayout;
+import android.widget.RelativeLayout;
 
-import com.github.nkzawa.emitter.Emitter;
-import com.github.nkzawa.socketio.client.IO;
-import com.github.nkzawa.socketio.client.Socket;
 import com.google.vrtoolkit.cardboard.CardboardActivity;
+import com.google.zxing.Result;
+import com.google.zxing.qrcode.QRCodeReader;
 
-public class ViewerActivity extends CardboardActivity implements OnPreparedListener  {
+public class ViewerActivity extends CardboardActivity implements OnPreparedListener, WebSocketListener {
 
 	private static final String TAG = "ViewerActivity";
+	
+	QrFinderView qrFinderView;
+	VideoCardboardView videoCardboardView;
+	CardboardOverlayView overlayView;
+	WebSocketCommunicator communicator;
 	
 	MediaPlayer mMediaPlayer;
 	boolean mIsMediaPlayerPrepared;
 	Vibrator mVibrator;
-	Socket mSocket;
 	String mVid;
-	String mSocketRoom;
-	
-	private void processIntent(Intent intent) {
-		mVid = intent.getData().getQueryParameter("vid");		
-		try {
-			if (mSocketRoom != null) {
-				mSocket.emit("leave", new JSONObject().put("room", mSocketRoom));
-			}
-			mSocketRoom = intent.getData().getQueryParameter("room");
-			mSocket.emit("join", new JSONObject().put("room", mSocketRoom));
-			mSocket.emit("getYtLink", new JSONObject().put("vid", mVid));
-		} catch (JSONException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+	int startTimeMs;
+	int endTimeMs;
+		
+	private void launchExperience(Uri uri) {
+		overlayView.show3DToast("Launching Experience");
+		
+		mVid = uri.getQueryParameter("vid");
+		startTimeMs = Integer.valueOf(uri.getQueryParameter("start")) * 1000; //Converting from seconds into ms
+		endTimeMs = Integer.valueOf(uri.getQueryParameter("end")) * 1000;
+		
+		communicator.joinRoom(uri.getQueryParameter("room"));
+		communicator.requestVideo(mVid);
+        	
+		RelativeLayout main = (RelativeLayout) findViewById(R.id.main_layout);
+		main.removeView(qrFinderView);
+
+		if (videoCardboardView == null) {			
+			videoCardboardView = new VideoCardboardView(getBaseContext(), mMediaPlayer);
+			videoCardboardView.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
 		}
-        Log.d(TAG, "newIntent! Socket Room: " + mSocketRoom + " vid: " + mVid);
+        main.addView(videoCardboardView, 0);
+        setCardboardView(videoCardboardView); //Has to be the very last call
+        
+		Log.d(TAG, "newIntent! Vid: " + mVid);
+	}
+	
+	private void launchQrCodeScanner() {
+		RelativeLayout main = (RelativeLayout) findViewById(R.id.main_layout);
+		main.removeView(videoCardboardView);
+		
+		if (qrFinderView == null) {			
+			qrFinderView = new QrFinderView(getBaseContext());
+			qrFinderView.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+		}
+    	
+    	//setCardboardView(qrFinderView);    	
+    	main.addView(qrFinderView, 0);
+    	overlayView.show3DToast("Open Experience on the other device. \n\n Then use magnet switch to scan QR Code.");
 	}
 	
     @Override
@@ -54,79 +75,18 @@ public class ViewerActivity extends CardboardActivity implements OnPreparedListe
         Log.d(TAG, "onCreate");
         mVibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
         setContentView(R.layout.activity_viewer);	
-        mMediaPlayer = new MediaPlayer();
-        mMediaPlayer.setOnPreparedListener(this);
-
-        VideoCardboardView videoCardboardView = new VideoCardboardView(getBaseContext(), mMediaPlayer);
-        videoCardboardView.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
-        setCardboardView(videoCardboardView);
-
-        FrameLayout main = (FrameLayout) findViewById(R.id.main_layout);
-        main.addView(videoCardboardView);
-
-        try {
-			mSocket = IO.socket("http://172.16.59.93:3000");
-			mSocket.on(Socket.EVENT_CONNECT, new Emitter.Listener() {
-				@Override
-				public void call(Object... arg0) {
-					Log.i(TAG, "Websocket connected");
-				}
-			}).on("receiveYtLink", new Emitter.Listener() {
-				@Override
-				public void call(Object... args) {
-					JSONObject data = (JSONObject)args[0];
-					String videoUrl;
-					try {
-						videoUrl = (String) data.get("url");
-				        Log.i(TAG, "Video URL: " + videoUrl);
-				        
-				        if (mMediaPlayer.isPlaying()) {
-				        	mMediaPlayer.stop();
-				        }
-				        mIsMediaPlayerPrepared = false;
-						mMediaPlayer.setDataSource(videoUrl);
-						mMediaPlayer.prepare();
-					} catch (Exception e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-				}
-			}).on("pauseCardboard", new Emitter.Listener() {
-				@Override
-				public void call(Object... args){
-					if (!mMediaPlayer.isPlaying()) {
-						mMediaPlayer.pause();
-					}
-					try {
-						JSONObject data = (JSONObject)args[0];
-						mMediaPlayer.seekTo(data.getInt("currentTime") * 1000);
-					} catch (Exception e) {
-						e.printStackTrace();
-					}
-				}
-			}).on("playCardboard", new Emitter.Listener() {
-				@Override
-				public void call(Object... args) {
-					if (!mMediaPlayer.isPlaying()) {						
-						mMediaPlayer.start();
-					}
-					try {
-						JSONObject data = (JSONObject)args[0];
-						mMediaPlayer.seekTo(data.getInt("currentTime") * 1000);
-					} catch (Exception e) {
-						e.printStackTrace();
-					}
-				}
-			});
-			mSocket.connect();
-		} catch (URISyntaxException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
         
+        overlayView = (CardboardOverlayView) findViewById(R.id.overlay);
+        communicator =  new WebSocketCommunicator(this);
+		
+		mMediaPlayer = new MediaPlayer();
+        mMediaPlayer.setOnPreparedListener(this);
+		
         Intent intent = getIntent();
         if (intent.getData() != null) {
-        	processIntent(intent);
+        	launchExperience(intent.getData());
+        } else {        	
+        	launchQrCodeScanner();
         }
     }
     
@@ -134,29 +94,86 @@ public class ViewerActivity extends CardboardActivity implements OnPreparedListe
     public void onCardboardTrigger() {
     	Log.d(TAG, "Cardboard triggered");
     	mVibrator.vibrate(50);
+    	scanQrCode();
+    	
     	if(!mIsMediaPlayerPrepared) {
     		return;
     	}
     	
-    	JSONObject socketData = new JSONObject();
-    	try{
-    		socketData.put("room", mSocketRoom);
-        	socketData.put("currentTime", mMediaPlayer.getCurrentPosition() / 1000);
-    	} catch (JSONException e) {
-    		e.printStackTrace();
-    	}
-    	
     	if (mMediaPlayer.isPlaying()) {
     		mMediaPlayer.pause();
-    		mSocket.emit("cardboardPaused", socketData);
+    		communicator.sendPaused(mMediaPlayer.getCurrentPosition());
     	} else {
         	mMediaPlayer.start();
-        	mSocket.emit("cardboardPlaying", socketData);
+        	communicator.sendPlaying();
     	}
+    }
+    
+    private void scanQrCode() {
+    	QRCodeReader reader = new QRCodeReader();
+    	Result result = null;
+		try {
+			result = reader.decode(qrFinderView.getCameraImage());
+		} catch (com.google.zxing.NotFoundException e) {
+			overlayView.show3DToast("No Code Found.\nPlease try Again!");
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		if (result != null) {
+			launchExperience(Uri.parse(result.getText()));
+		}
     }
 
 	@Override
 	public void onPrepared(MediaPlayer mp) {
 		mIsMediaPlayerPrepared = true;
+	}
+
+	@Override
+	public void onYoutubeLinkReceived(String videoUrl) {
+		if (mMediaPlayer.isPlaying()) {
+        	mMediaPlayer.stop();
+        }
+        mIsMediaPlayerPrepared = false;
+		try {
+			mMediaPlayer.setDataSource(videoUrl);
+			mMediaPlayer.prepare();
+			mMediaPlayer.seekTo(startTimeMs);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		new ExperienceEndWatchdog().start();
+	}
+
+	@Override
+	public void receivedPause(int currentTimeMs) {
+		if (!mMediaPlayer.isPlaying()) {
+			return;
+		}
+		mMediaPlayer.pause();
+		mMediaPlayer.seekTo(currentTimeMs);
+	}
+
+	@Override
+	public void receivedPlay() {
+		if (!mMediaPlayer.isPlaying()) {						
+			mMediaPlayer.start();
+		}
+	}
+	
+	private class ExperienceEndWatchdog extends Thread {
+		@Override
+		public void run() {
+			while (mMediaPlayer.getCurrentPosition() < endTimeMs) {
+				try {
+					sleep(1000);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+			mMediaPlayer.pause();
+			mMediaPlayer.seekTo(startTimeMs);
+		}
 	}
 }

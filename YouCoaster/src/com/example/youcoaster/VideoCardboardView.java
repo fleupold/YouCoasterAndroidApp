@@ -16,6 +16,7 @@
 
 package com.example.youcoaster;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
@@ -23,11 +24,13 @@ import java.nio.FloatBuffer;
 import javax.microedition.khronos.egl.EGLConfig;
 
 import android.content.Context;
+import android.hardware.Camera;
 import android.graphics.SurfaceTexture;
 import android.media.MediaPlayer;
 import android.opengl.GLES20;
 import android.opengl.Matrix;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.Surface;
 
 import com.google.vrtoolkit.cardboard.CardboardView;
@@ -51,6 +54,12 @@ class VideoCardboardView extends CardboardView  {
         mRenderer.setMediaPlayer(mMediaPlayer);
         setRenderer(mRenderer);
     }
+    
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+    	mRenderer.resetView();
+    	return super.onTouchEvent(event);
+    }
 
     @Override
     public void onResume() {
@@ -62,6 +71,7 @@ class VideoCardboardView extends CardboardView  {
         super.onResume();
     }
 
+    /*
     public void startTest() throws Exception {
         Thread.sleep(SLEEP_TIME_MS);
         mMediaPlayer.start();
@@ -73,6 +83,7 @@ class VideoCardboardView extends CardboardView  {
             Thread.sleep(SLEEP_TIME_MS);
         }
     }
+    */
 
     private static class VideoCardboardRenderer 
     	implements StereoRenderer, SurfaceTexture.OnFrameAvailableListener {
@@ -84,13 +95,13 @@ class VideoCardboardView extends CardboardView  {
         private static final int TRIANGLE_VERTICES_DATA_UV_OFFSET = 3;
         private final float[] mTriangleVerticesData = {
             // X, Y, Z, U, V
-            -1.0f, -1.0f, 0, 0.f, 0.f,
-            1.0f, -1.0f, 0, 1.f, 0.f,
-            -1.0f,  1.0f, 0, 0.f, 1.f,
-            1.0f,  1.0f, 0, 1.f, 1.f,
+            -1.0f, -.75f, 0, 0.f, 0.f,
+            1.0f, -.75f, 0, 1.f, 0.f,
+            -1.0f,  .75f, 0, 0.f, 1.f,
+            1.0f,  .75f, 0, 1.f, 1.f,
         };
         
-        private static final float CAMERA_Z = 1.7f;
+        private static final float CAMERA_Z = 1f;
 
         private FloatBuffer mTriangleVertices;
 
@@ -115,9 +126,8 @@ class VideoCardboardView extends CardboardView  {
                 "}\n";
 
         private float[] mMVPMatrix = new float[16];
-        private float[] mSTMatrix = new float[16];
+        private float[] mSTMatrix =  new float[16];
         
-        private float[] mHeadViewMatrix = new float[16];
         private float[] mCameraMatrix = new float[16];
         private float[] mViewMatrix = new float[16];
 
@@ -133,10 +143,12 @@ class VideoCardboardView extends CardboardView  {
 
         private SurfaceTexture mSurface;
         private boolean updateSurface = false;
+        private boolean resetView = false;
 
         private static int GL_TEXTURE_EXTERNAL_OES = 0x8D65;
 
         private MediaPlayer mMediaPlayer;
+        private Camera mCamera = Camera.open();
 
         public VideoCardboardRenderer(Context context) {
             mTriangleVertices = ByteBuffer.allocateDirect(
@@ -146,6 +158,7 @@ class VideoCardboardView extends CardboardView  {
 
             Matrix.setIdentityM(mSTMatrix, 0);
             Matrix.setIdentityM(mMVPMatrix, 0);
+			Matrix.setLookAtM(mCameraMatrix, 0, 0, 0, CAMERA_Z, 0, 0, 0, 0, 1, 0);
         }
 
         public void setMediaPlayer(MediaPlayer player) {
@@ -204,9 +217,18 @@ class VideoCardboardView extends CardboardView  {
             mSurface = new SurfaceTexture(mTextureID);
             mSurface.setOnFrameAvailableListener(this);
 
-            Surface surface = new Surface(mSurface);
-            mMediaPlayer.setSurface(surface);
-            surface.release();
+            if (mMediaPlayer != null) {
+                Surface surface = new Surface(mSurface);
+                mMediaPlayer.setSurface(surface);   
+                surface.release();
+            } else {
+            	try {
+					mCamera.setPreviewTexture(mSurface);
+					mCamera.startPreview();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+            }
 
             synchronized(this) {
                 updateSurface = false;
@@ -299,7 +321,7 @@ class VideoCardboardView extends CardboardView  {
             Matrix.multiplyMM(mViewMatrix, 0, transform.getEyeView(), 0, mCameraMatrix, 0);
             Matrix.multiplyMM(mModelViewMatrix, 0, mViewMatrix, 0, mMVPMatrix, 0);
             Matrix.multiplyMM(mModelViewPerspectiveMatrix, 0, transform.getPerspective(), 0, mModelViewMatrix, 0);
-
+            
             GLES20.glUniformMatrix4fv(muMVPMatrixHandle, 1, false, mModelViewPerspectiveMatrix, 0);
             GLES20.glUniformMatrix4fv(muSTMatrixHandle, 1, false, mSTMatrix, 0);
 
@@ -314,11 +336,23 @@ class VideoCardboardView extends CardboardView  {
 
 		@Override
 		public void onNewFrame(HeadTransform headTransform) {
-			
-			Matrix.setLookAtM(mCameraMatrix, 0, 0, 0, CAMERA_Z, 0, 0, 0, 0, 1, 0);
-			headTransform.getHeadView(mHeadViewMatrix, 0);
-			
+					
             synchronized(this) {
+            	if (resetView) {
+            		//Multiply the original cameraMatrix with the inverse of the current headMatrix
+                	Log.d(TAG, "Resetting View");
+                	float[] inverted = new float[16];
+                	float[] temp = new float[16];
+                	headTransform.getHeadView(temp, 0);
+                	Matrix.invertM(inverted, 0, temp, 0);
+
+                	Matrix.setLookAtM(mCameraMatrix, 0, 0, 0, CAMERA_Z, 0, 0, 0, 0, 1, 0);                	                	
+                	Matrix.multiplyMM(temp, 0, inverted, 0, mCameraMatrix, 0);
+                	mCameraMatrix = temp;
+                	
+                	resetView = false;
+                }
+            	
                 if (updateSurface) {
                     mSurface.updateTexImage();
                     mSurface.getTransformMatrix(mSTMatrix);
@@ -329,6 +363,10 @@ class VideoCardboardView extends CardboardView  {
 
 		@Override
 		public void onRendererShutdown() {
+		}
+		
+		public void resetView() {
+			resetView = true;
 		}
 
     }  // End of class VideoRender.
