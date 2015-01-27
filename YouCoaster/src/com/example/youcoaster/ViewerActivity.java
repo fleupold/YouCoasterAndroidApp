@@ -6,6 +6,7 @@ import android.media.MediaPlayer;
 import android.media.MediaPlayer.OnPreparedListener;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.Vibrator;
 import android.util.Log;
 import android.view.ViewGroup.LayoutParams;
@@ -15,9 +16,11 @@ import com.google.vrtoolkit.cardboard.CardboardActivity;
 import com.google.zxing.Result;
 import com.google.zxing.qrcode.QRCodeReader;
 
-public class ViewerActivity extends CardboardActivity implements OnPreparedListener, WebSocketListener {
+public class ViewerActivity extends CardboardActivity implements OnPreparedListener, WebSocketListener, CardboardOverlayViewListener {
 
 	private static final String TAG = "ViewerActivity";
+	private static final int TOAST_REPEAT_INTERVAL = 3000;
+	private static final int DOUBLE_CLICK_THRESHOLD = 2000;
 	
 	QrFinderView qrFinderView;
 	VideoCardboardView videoCardboardView;
@@ -26,13 +29,17 @@ public class ViewerActivity extends CardboardActivity implements OnPreparedListe
 	
 	MediaPlayer mMediaPlayer;
 	boolean mIsMediaPlayerPrepared;
+	boolean mIsSearchingForQr;
 	Vibrator mVibrator;
 	String mVid;
 	int startTimeMs;
 	int endTimeMs;
+	
+	long lastCardboardTrigger;
 		
 	private void launchExperience(Uri uri) {
-		overlayView.show3DToast("Launching Experience");
+		mIsSearchingForQr = false;
+		overlayView.show3DToastTemporary("Launching Experience", false);
 		
 		mVid = uri.getQueryParameter("vid");
 		startTimeMs = Integer.valueOf(uri.getQueryParameter("start")) * 1000; //Converting from seconds into ms
@@ -43,7 +50,8 @@ public class ViewerActivity extends CardboardActivity implements OnPreparedListe
         	
 		RelativeLayout main = (RelativeLayout) findViewById(R.id.main_layout);
 		main.removeView(qrFinderView);
-
+		qrFinderView = null;
+		
 		if (videoCardboardView == null) {			
 			videoCardboardView = new VideoCardboardView(getBaseContext(), mMediaPlayer);
 			videoCardboardView.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
@@ -55,6 +63,7 @@ public class ViewerActivity extends CardboardActivity implements OnPreparedListe
 	}
 	
 	private void launchQrCodeScanner() {
+		mIsSearchingForQr = true;
 		RelativeLayout main = (RelativeLayout) findViewById(R.id.main_layout);
 		main.removeView(videoCardboardView);
 		
@@ -65,7 +74,7 @@ public class ViewerActivity extends CardboardActivity implements OnPreparedListe
     	
     	//setCardboardView(qrFinderView);    	
     	main.addView(qrFinderView, 0);
-    	overlayView.show3DToast("Open Experience on the other device. \n\n Then use magnet switch to scan QR Code.");
+    	showQrCodeInstructions();
 	}
 	
     @Override
@@ -77,6 +86,7 @@ public class ViewerActivity extends CardboardActivity implements OnPreparedListe
         setContentView(R.layout.activity_viewer);	
         
         overlayView = (CardboardOverlayView) findViewById(R.id.overlay);
+        overlayView.setListener(this);
         communicator =  new WebSocketCommunicator(this);
 		
 		mMediaPlayer = new MediaPlayer();
@@ -94,19 +104,31 @@ public class ViewerActivity extends CardboardActivity implements OnPreparedListe
     public void onCardboardTrigger() {
     	Log.d(TAG, "Cardboard triggered");
     	mVibrator.vibrate(50);
-    	scanQrCode();
     	
-    	if(!mIsMediaPlayerPrepared) {
-    		return;
+    	if (mIsSearchingForQr) {    		
+    		scanQrCode();
+    	} else {   
+    		long currentTime = System.currentTimeMillis();
+    		if (currentTime - lastCardboardTrigger > DOUBLE_CLICK_THRESHOLD) {
+    			Log.d(TAG, "Single Click");
+    			videoCardboardView.recenter();
+    		} else {    			
+    			Log.d(TAG, "Double Click");
+    			if(!mIsMediaPlayerPrepared) {
+    				return;
+    			}
+    			
+    			if (mMediaPlayer.isPlaying()) {
+    				mMediaPlayer.pause();
+    				communicator.sendPaused(mMediaPlayer.getCurrentPosition());
+    			} else {
+    				mMediaPlayer.start();
+    				communicator.sendPlaying();
+    			}
+    		}
+    		lastCardboardTrigger = currentTime;
     	}
     	
-    	if (mMediaPlayer.isPlaying()) {
-    		mMediaPlayer.pause();
-    		communicator.sendPaused(mMediaPlayer.getCurrentPosition());
-    	} else {
-        	mMediaPlayer.start();
-        	communicator.sendPlaying();
-    	}
     }
     
     private void scanQrCode() {
@@ -115,7 +137,7 @@ public class ViewerActivity extends CardboardActivity implements OnPreparedListe
 		try {
 			result = reader.decode(qrFinderView.getCameraImage());
 		} catch (com.google.zxing.NotFoundException e) {
-			overlayView.show3DToast("No Code Found.\nPlease try Again!");
+			overlayView.show3DToastTemporary("No Code Found.\nPlease try Again!", true);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -128,6 +150,7 @@ public class ViewerActivity extends CardboardActivity implements OnPreparedListe
 	@Override
 	public void onPrepared(MediaPlayer mp) {
 		mIsMediaPlayerPrepared = true;
+		showPlayerInstructions();
 	}
 
 	@Override
@@ -175,5 +198,27 @@ public class ViewerActivity extends CardboardActivity implements OnPreparedListe
 			mMediaPlayer.pause();
 			mMediaPlayer.seekTo(startTimeMs);
 		}
+	}
+
+	@Override
+	public void on3DToastDismissed() {
+		if (mIsMediaPlayerPrepared) {
+			new Handler().postDelayed(new Runnable() {
+				@Override
+				public void run() {
+					if (!mMediaPlayer.isPlaying()) {						
+						showPlayerInstructions();
+					}
+				}
+			}, TOAST_REPEAT_INTERVAL);
+		}
+	}
+	
+	private void showPlayerInstructions() {
+		overlayView.show3DToastTemporary("Video Ready! \n 1 Click: Recenter view \n 2 Clicks: Play/Pause", true);
+	}
+	
+	private void showQrCodeInstructions() {
+    	overlayView.show3DToastTemporary("On another device: \n Go to youcoaster.com \n Chose Experience and scan QR Code.", false);
 	}
 }

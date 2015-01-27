@@ -16,7 +16,6 @@
 
 package com.example.youcoaster;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
@@ -24,13 +23,11 @@ import java.nio.FloatBuffer;
 import javax.microedition.khronos.egl.EGLConfig;
 
 import android.content.Context;
-import android.hardware.Camera;
 import android.graphics.SurfaceTexture;
 import android.media.MediaPlayer;
 import android.opengl.GLES20;
 import android.opengl.Matrix;
 import android.util.Log;
-import android.view.MotionEvent;
 import android.view.Surface;
 
 import com.google.vrtoolkit.cardboard.CardboardView;
@@ -40,7 +37,6 @@ import com.google.vrtoolkit.cardboard.Viewport;
 
 class VideoCardboardView extends CardboardView  {
     private static final String TAG = "VideoSurfaceView";
-    private static final int SLEEP_TIME_MS = 1000;
 
     VideoCardboardRenderer mRenderer;
     private MediaPlayer mMediaPlayer = null;
@@ -55,10 +51,8 @@ class VideoCardboardView extends CardboardView  {
         setRenderer(mRenderer);
     }
     
-    @Override
-    public boolean onTouchEvent(MotionEvent event) {
+    public void recenter() {
     	mRenderer.resetView();
-    	return super.onTouchEvent(event);
     }
 
     @Override
@@ -70,20 +64,6 @@ class VideoCardboardView extends CardboardView  {
 
         super.onResume();
     }
-
-    /*
-    public void startTest() throws Exception {
-        Thread.sleep(SLEEP_TIME_MS);
-        mMediaPlayer.start();
-
-        Thread.sleep(SLEEP_TIME_MS * 5);
-        mMediaPlayer.setSurface(null);
-
-        while (mMediaPlayer.isPlaying()) {
-            Thread.sleep(SLEEP_TIME_MS);
-        }
-    }
-    */
 
     private static class VideoCardboardRenderer 
     	implements StereoRenderer, SurfaceTexture.OnFrameAvailableListener {
@@ -148,7 +128,6 @@ class VideoCardboardView extends CardboardView  {
         private static int GL_TEXTURE_EXTERNAL_OES = 0x8D65;
 
         private MediaPlayer mMediaPlayer;
-        private Camera mCamera = Camera.open();
 
         public VideoCardboardRenderer(Context context) {
             mTriangleVertices = ByteBuffer.allocateDirect(
@@ -221,15 +200,8 @@ class VideoCardboardView extends CardboardView  {
                 Surface surface = new Surface(mSurface);
                 mMediaPlayer.setSurface(surface);   
                 surface.release();
-            } else {
-            	try {
-					mCamera.setPreviewTexture(mSurface);
-					mCamera.startPreview();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
             }
-
+            
             synchronized(this) {
                 updateSurface = false;
             }
