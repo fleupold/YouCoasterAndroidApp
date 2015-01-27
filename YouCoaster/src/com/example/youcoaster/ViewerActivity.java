@@ -13,23 +13,20 @@ import android.view.ViewGroup.LayoutParams;
 import android.widget.RelativeLayout;
 
 import com.google.vrtoolkit.cardboard.CardboardActivity;
-import com.google.zxing.Result;
-import com.google.zxing.qrcode.QRCodeReader;
 
 public class ViewerActivity extends CardboardActivity implements OnPreparedListener, WebSocketListener, CardboardOverlayViewListener {
 
 	private static final String TAG = "ViewerActivity";
 	private static final int TOAST_REPEAT_INTERVAL = 3000;
 	private static final int DOUBLE_CLICK_THRESHOLD = 2000;
+	private static final int QR_FINDER_REQUEST_CODE = 0;
 	
-	QrFinderView qrFinderView;
 	VideoCardboardView videoCardboardView;
 	CardboardOverlayView overlayView;
 	WebSocketCommunicator communicator;
 	
 	MediaPlayer mMediaPlayer;
 	boolean mIsMediaPlayerPrepared;
-	boolean mIsSearchingForQr;
 	Vibrator mVibrator;
 	String mVid;
 	int startTimeMs;
@@ -38,7 +35,6 @@ public class ViewerActivity extends CardboardActivity implements OnPreparedListe
 	long lastCardboardTrigger;
 		
 	private void launchExperience(Uri uri) {
-		mIsSearchingForQr = false;
 		overlayView.show3DToastTemporary("Launching Experience", false);
 		
 		mVid = uri.getQueryParameter("vid");
@@ -49,8 +45,6 @@ public class ViewerActivity extends CardboardActivity implements OnPreparedListe
 		communicator.requestVideo(mVid);
         	
 		RelativeLayout main = (RelativeLayout) findViewById(R.id.main_layout);
-		main.removeView(qrFinderView);
-		qrFinderView = null;
 		
 		if (videoCardboardView == null) {			
 			videoCardboardView = new VideoCardboardView(getBaseContext(), mMediaPlayer);
@@ -59,22 +53,7 @@ public class ViewerActivity extends CardboardActivity implements OnPreparedListe
         main.addView(videoCardboardView, 0);
         setCardboardView(videoCardboardView); //Has to be the very last call
         
-		Log.d(TAG, "newIntent! Vid: " + mVid);
-	}
-	
-	private void launchQrCodeScanner() {
-		mIsSearchingForQr = true;
-		RelativeLayout main = (RelativeLayout) findViewById(R.id.main_layout);
-		main.removeView(videoCardboardView);
-		
-		if (qrFinderView == null) {			
-			qrFinderView = new QrFinderView(getBaseContext());
-			qrFinderView.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
-		}
-    	
-    	//setCardboardView(qrFinderView);    	
-    	main.addView(qrFinderView, 0);
-    	showQrCodeInstructions();
+		Log.d(TAG, "new Video! Vid: " + mVid);
 	}
 	
     @Override
@@ -83,7 +62,7 @@ public class ViewerActivity extends CardboardActivity implements OnPreparedListe
         
         Log.d(TAG, "onCreate");
         mVibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
-        setContentView(R.layout.activity_viewer);	
+        setContentView(R.layout.default_layout);	
         
         overlayView = (CardboardOverlayView) findViewById(R.id.overlay);
         overlayView.setListener(this);
@@ -95,58 +74,46 @@ public class ViewerActivity extends CardboardActivity implements OnPreparedListe
         Intent intent = getIntent();
         if (intent.getData() != null) {
         	launchExperience(intent.getData());
-        } else {        	
-        	launchQrCodeScanner();
+        } else {    
+        	Intent qrFinder = new Intent(this, QrFinderActivity.class);
+        	startActivityForResult(qrFinder, QR_FINDER_REQUEST_CODE);
         }
+    }
+    
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+    	super.onActivityResult(requestCode, resultCode, data);
+    	if (requestCode == QR_FINDER_REQUEST_CODE && resultCode ==  RESULT_OK) {
+    		launchExperience(data.getData());
+    	}
     }
     
     @Override
     public void onCardboardTrigger() {
     	Log.d(TAG, "Cardboard triggered");
     	mVibrator.vibrate(50);
-    	
-    	if (mIsSearchingForQr) {    		
-    		scanQrCode();
-    	} else {   
-    		long currentTime = System.currentTimeMillis();
-    		if (currentTime - lastCardboardTrigger > DOUBLE_CLICK_THRESHOLD) {
-    			Log.d(TAG, "Single Click");
-    			videoCardboardView.recenter();
-    		} else {    			
-    			Log.d(TAG, "Double Click");
-    			if(!mIsMediaPlayerPrepared) {
-    				return;
-    			}
-    			
-    			if (mMediaPlayer.isPlaying()) {
-    				mMediaPlayer.pause();
-    				communicator.sendPaused(mMediaPlayer.getCurrentPosition());
-    			} else {
-    				mMediaPlayer.start();
-    				communicator.sendPlaying();
-    			}
+   
+    	long currentTime = System.currentTimeMillis();
+    	if (currentTime - lastCardboardTrigger > DOUBLE_CLICK_THRESHOLD) {
+    		Log.d(TAG, "Single Click");
+    		videoCardboardView.recenter();
+    	} else {    			
+    		Log.d(TAG, "Double Click");
+    		if(!mIsMediaPlayerPrepared) {
+    			return;
     		}
-    		lastCardboardTrigger = currentTime;
+
+    		if (mMediaPlayer.isPlaying()) {
+    			mMediaPlayer.pause();
+    			communicator.sendPaused(mMediaPlayer.getCurrentPosition());
+    		} else {
+    			mMediaPlayer.start();
+    			communicator.sendPlaying();
+    		}
     	}
-    	
+    	lastCardboardTrigger = currentTime;
     }
     
-    private void scanQrCode() {
-    	QRCodeReader reader = new QRCodeReader();
-    	Result result = null;
-		try {
-			result = reader.decode(qrFinderView.getCameraImage());
-		} catch (com.google.zxing.NotFoundException e) {
-			overlayView.show3DToastTemporary("No Code Found.\nPlease try Again!", true);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		
-		if (result != null) {
-			launchExperience(Uri.parse(result.getText()));
-		}
-    }
-
 	@Override
 	public void onPrepared(MediaPlayer mp) {
 		mIsMediaPlayerPrepared = true;
@@ -215,10 +182,6 @@ public class ViewerActivity extends CardboardActivity implements OnPreparedListe
 	}
 	
 	private void showPlayerInstructions() {
-		overlayView.show3DToastTemporary("Video Ready! \n 1 Click: Recenter view \n 2 Clicks: Play/Pause", true);
-	}
-	
-	private void showQrCodeInstructions() {
-    	overlayView.show3DToastTemporary("On another device: \n Go to youcoaster.com \n Chose Experience and scan QR Code.", false);
+		overlayView.show3DToastTemporary("Video Ready!\nUse Cardboard magnet to control \n 1 Click: Recenter view \n 2 Clicks: Play/Pause", true);
 	}
 }

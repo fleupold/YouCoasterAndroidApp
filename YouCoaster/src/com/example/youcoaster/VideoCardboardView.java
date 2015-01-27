@@ -36,8 +36,6 @@ import com.google.vrtoolkit.cardboard.HeadTransform;
 import com.google.vrtoolkit.cardboard.Viewport;
 
 class VideoCardboardView extends CardboardView  {
-    private static final String TAG = "VideoSurfaceView";
-
     VideoCardboardRenderer mRenderer;
     private MediaPlayer mMediaPlayer = null;
 
