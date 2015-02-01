@@ -1,5 +1,7 @@
 package com.example.youcoaster;
 
+import java.util.ArrayList;
+
 import android.content.Context;
 import android.content.Intent;
 import android.media.MediaPlayer;
@@ -8,6 +10,9 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Vibrator;
+import android.speech.RecognitionListener;
+import android.speech.RecognizerIntent;
+import android.speech.SpeechRecognizer;
 import android.util.Log;
 import android.view.ViewGroup.LayoutParams;
 import android.widget.RelativeLayout;
@@ -18,21 +23,21 @@ public class ViewerActivity extends CardboardActivity implements OnPreparedListe
 
 	private static final String TAG = "ViewerActivity";
 	private static final int TOAST_REPEAT_INTERVAL = 3000;
-	private static final int DOUBLE_CLICK_THRESHOLD = 2000;
 	private static final int QR_FINDER_REQUEST_CODE = 0;
 	
-	VideoCardboardView videoCardboardView;
-	CardboardOverlayView overlayView;
-	WebSocketCommunicator communicator;
+	private VideoCardboardView videoCardboardView;
+	private CardboardOverlayView overlayView;
+	private WebSocketCommunicator communicator;
 	
-	MediaPlayer mMediaPlayer;
-	boolean mIsMediaPlayerPrepared;
-	Vibrator mVibrator;
-	String mVid;
-	int startTimeMs;
-	int endTimeMs;
+	private MediaPlayer mMediaPlayer;
+	private boolean mIsMediaPlayerPrepared;
+	private Vibrator mVibrator;
+	private String mVid;
+	private int startTimeMs;
+	private int endTimeMs;
 	
-	long lastCardboardTrigger;
+	private SpeechRecognizer mSpeechRecognizer;
+	private Intent mRecognizerIntent;
 		
 	private void launchExperience(Uri uri) {
 		overlayView.show3DToastTemporary("Launching Experience", false);
@@ -54,7 +59,12 @@ public class ViewerActivity extends CardboardActivity implements OnPreparedListe
         setCardboardView(videoCardboardView); //Has to be the very last call
         
 		Log.d(TAG, "new Video! Vid: " + mVid);
-	}
+		
+		mSpeechRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
+		mSpeechRecognizer.setRecognitionListener(new SpeechListener());
+		mRecognizerIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+		mRecognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+ 	}
 	
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -90,28 +100,17 @@ public class ViewerActivity extends CardboardActivity implements OnPreparedListe
     
     @Override
     public void onCardboardTrigger() {
+    	if (!mIsMediaPlayerPrepared) {
+    		return;
+    	}
+    	
     	Log.d(TAG, "Cardboard triggered");
     	mVibrator.vibrate(50);
    
-    	long currentTime = System.currentTimeMillis();
-    	if (currentTime - lastCardboardTrigger > DOUBLE_CLICK_THRESHOLD) {
-    		Log.d(TAG, "Single Click");
-    		videoCardboardView.recenter();
-    	} else {    			
-    		Log.d(TAG, "Double Click");
-    		if(!mIsMediaPlayerPrepared) {
-    			return;
-    		}
-
-    		if (mMediaPlayer.isPlaying()) {
-    			mMediaPlayer.pause();
-    			communicator.sendPaused(mMediaPlayer.getCurrentPosition());
-    		} else {
-    			mMediaPlayer.start();
-    			communicator.sendPlaying();
-    		}
-    	}
-    	lastCardboardTrigger = currentTime;
+   		Log.d(TAG, "Single Click");
+   		videoCardboardView.recenter();
+   		
+   		mSpeechRecognizer.startListening(mRecognizerIntent);
     }
     
 	@Override
@@ -152,18 +151,43 @@ public class ViewerActivity extends CardboardActivity implements OnPreparedListe
 		}
 	}
 	
+	private void processVoiceCommands(ArrayList<String> commands) {
+		for (String command : commands) {			
+			if (command.contains("play") && !mMediaPlayer.isPlaying()) {
+				mMediaPlayer.start();
+				communicator.sendPlaying();
+				return;
+			} 
+			if ((command.contains("pause") || command.contains("stop")) && mMediaPlayer.isPlaying()) {
+				mMediaPlayer.pause();
+				communicator.sendPaused(mMediaPlayer.getCurrentPosition());
+				return;
+			}
+		}
+	}
+	
 	private class ExperienceEndWatchdog extends Thread {
 		@Override
 		public void run() {
-			while (mMediaPlayer.getCurrentPosition() < endTimeMs) {
+			while(true) {				
+				while (mMediaPlayer.getCurrentPosition() < endTimeMs) {
+					try {
+						sleep(1000);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+				Log.d(TAG, "ExperienceEndWatchfod fired");
+				mMediaPlayer.pause();
+				mMediaPlayer.seekTo(startTimeMs);
+				
+				//Keep waiting for end if video is replayed
 				try {
 					sleep(1000);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
 			}
-			mMediaPlayer.pause();
-			mMediaPlayer.seekTo(startTimeMs);
 		}
 	}
 
@@ -183,5 +207,71 @@ public class ViewerActivity extends CardboardActivity implements OnPreparedListe
 	
 	private void showPlayerInstructions() {
 		overlayView.show3DToastTemporary("Video Ready!\nUse Cardboard magnet to control \n 1 Click: Recenter view \n 2 Clicks: Play/Pause", true);
+	}
+	
+	private class SpeechListener implements RecognitionListener{
+
+		private static final String TAG = "SpeechListener";
+		
+		@Override
+		public void onBeginningOfSpeech() {
+			Log.d(TAG, "Beginning of Speech");	
+		}
+
+		@Override
+		public void onBufferReceived(byte[] arg0) {
+			// TODO Auto-generated method stub
+			
+		}
+
+		@Override
+		public void onEndOfSpeech() {
+			Log.d(TAG, "End of Speech");
+		}
+
+		@Override
+		public void onError(int errorCode) {
+			Log.d(TAG, "Error: " + errorCode);
+			if (errorCode ==  SpeechRecognizer.ERROR_CLIENT || errorCode == SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS) {
+				Log.d(TAG, "Client Error");
+				return;
+			}
+			if (errorCode == SpeechRecognizer.ERROR_RECOGNIZER_BUSY) {
+				Log.d(TAG, "Service Busy");
+				return;
+			}
+		}
+
+		@Override
+		public void onEvent(int arg0, Bundle arg1) {}
+
+		@Override
+		public void onPartialResults(Bundle results) {		}
+
+		@Override
+		public void onReadyForSpeech(Bundle arg0) {
+			Log.d(TAG, "Ready for speech");
+		}
+
+		@Override
+		public void onResults(Bundle results) {
+			Log.d(TAG, "on results");
+			if (results == null) {
+				return;
+			}
+			ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+			if (matches == null) {
+				return;
+			}
+			Log.d(TAG, matches.toString());
+			processVoiceCommands(matches);
+		}
+
+		@Override
+		public void onRmsChanged(float arg0) {
+			// TODO Auto-generated method stub
+			
+		}
+		
 	}
 }
