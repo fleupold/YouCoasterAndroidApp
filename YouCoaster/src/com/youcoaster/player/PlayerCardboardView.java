@@ -34,7 +34,7 @@ import android.view.Surface;
 import android.view.View;
 import at.aau.itec.android.mediaplayer.MediaPlayer;
 
-import com.example.youcoaster.R;
+import com.youcoaster.R;
 import com.google.vrtoolkit.cardboard.CardboardView;
 import com.google.vrtoolkit.cardboard.EyeTransform;
 import com.google.vrtoolkit.cardboard.HeadTransform;

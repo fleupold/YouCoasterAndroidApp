@@ -20,7 +20,7 @@ import at.aau.itec.android.mediaplayer.MediaPlayer.OnPreparedListener;
 import at.aau.itec.android.mediaplayer.MediaPlayer.OnSeekCompleteListener;
 import at.aau.itec.android.mediaplayer.UriSource;
 
-import com.example.youcoaster.R;
+import com.youcoaster.R;
 import com.google.vrtoolkit.cardboard.CardboardActivity;
 import com.youcoaster.qrfinder.QrFinderActivity;
 import com.youcoaster.util.CardboardMenuView;

@@ -10,7 +10,7 @@ import android.view.MotionEvent;
 import android.view.ViewGroup.LayoutParams;
 import android.widget.RelativeLayout;
 
-import com.example.youcoaster.R;
+import com.youcoaster.R;
 import com.google.vrtoolkit.cardboard.CardboardActivity;
 import com.google.zxing.Result;
 import com.google.zxing.qrcode.QRCodeReader;
