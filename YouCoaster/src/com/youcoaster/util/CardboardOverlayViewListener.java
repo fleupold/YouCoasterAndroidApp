@@ -1,4 +1,4 @@
-package com.example.youcoaster;
+package com.youcoaster.util;
 
 public interface CardboardOverlayViewListener {
 	public void on3DToastDismissed();

@@ -1,4 +1,4 @@
-package com.example.youcoaster;
+package com.youcoaster.player;
 
 import java.util.Arrays;
 import java.util.List;
@@ -20,19 +20,23 @@ import at.aau.itec.android.mediaplayer.MediaPlayer.OnPreparedListener;
 import at.aau.itec.android.mediaplayer.MediaPlayer.OnSeekCompleteListener;
 import at.aau.itec.android.mediaplayer.UriSource;
 
+import com.example.youcoaster.R;
 import com.google.vrtoolkit.cardboard.CardboardActivity;
+import com.youcoaster.qrfinder.QrFinderActivity;
+import com.youcoaster.util.CardboardMenuView;
+import com.youcoaster.util.CardboardOverlayView;
+import com.youcoaster.util.CardboardOverlayViewListener;
 
-public class ViewerActivity extends CardboardActivity implements OnPreparedListener, WebSocketListener, CardboardOverlayViewListener, OnSeekCompleteListener, OnCompletionListener {
+public class PlayerActivity extends CardboardActivity implements OnPreparedListener, WebSocketListener, CardboardOverlayViewListener, OnSeekCompleteListener, OnCompletionListener {
 
 	private static final String TAG = "ViewerActivity";
 	private static final int TOAST_REPEAT_INTERVAL = 3000;
-	private static final int VIDEO_POSITION_SYNC_INTERVAL = 5000;
 	private static final int QR_FINDER_REQUEST_CODE = 0;
 	
 	private RelativeLayout main;
-	private VideoCardboardView videoCardboardView;
+	private PlayerCardboardView videoCardboardView;
 	private CardboardOverlayView overlayView;
-	private VideoMenuView videoMenuView;
+	private CardboardMenuView videoMenuView;
 	private WebSocketCommunicator communicator;
 	
 	private MediaPlayer mMediaPlayer;
@@ -63,7 +67,7 @@ public class ViewerActivity extends CardboardActivity implements OnPreparedListe
 		communicator.joinRoom(uri.getQueryParameter("room"));
 		communicator.requestVideo(mVid);
         	
-		videoCardboardView = new VideoCardboardView(getBaseContext(), mMediaPlayer, videoMenuView);
+		videoCardboardView = new PlayerCardboardView(getBaseContext(), mMediaPlayer, videoMenuView);
 		videoCardboardView.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
 		main.addView(videoCardboardView, 0);
 		
@@ -88,7 +92,7 @@ public class ViewerActivity extends CardboardActivity implements OnPreparedListe
         
         // Menu screen
         List<String> options = Arrays.asList("Go Back", "Play Again");
-        videoMenuView = new VideoMenuView(this, options);
+        videoMenuView = new CardboardMenuView(this, options);
         videoMenuView.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
         
 		RelativeLayout main = (RelativeLayout) findViewById(R.id.main_layout);
@@ -172,9 +176,9 @@ public class ViewerActivity extends CardboardActivity implements OnPreparedListe
 		videoCardboardView.setVisibility(View.VISIBLE);
 		showPlayerInstructions();
 		
-		endWatchdog = new ExperienceEndWatchdog();
+		endWatchdog = new ExperienceEndWatchdog(mMediaPlayer, endTimeMs, this);
 		endWatchdog.start();
-		syncJob = new VideoPositionSyncJob();
+		syncJob = new VideoPositionSyncJob(mMediaPlayer, communicator);
 		syncJob.start();
 	}
 
@@ -224,68 +228,6 @@ public class ViewerActivity extends CardboardActivity implements OnPreparedListe
 	
 	private void showPlayerInstructions() {
 		overlayView.show3DToastTemporary("Video Ready!\nPull magnet to start\n Then, pull magnet to\nrecenter view", true);
-	}
-	
-	private class ExperienceEndWatchdog extends Thread {
-		private boolean stopped;
-		
-		@Override
-		public void run() {
-			while(!stopped) {				
-				while (!mMediaPlayer.isPlaying() || mMediaPlayer.getCurrentPosition() < endTimeMs) {
-					try {
-						sleep(1000);
-					} catch (InterruptedException e) {
-						e.printStackTrace();
-					}
-				}
-				Log.d(TAG, "ExperienceEndWatchfod fired. Current time: " + mMediaPlayer.getCurrentPosition());
-				
-				onCompletion(mMediaPlayer);
-				
-				//Keep waiting for end if video is replayed
-				try {
-					sleep(1000);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-			}
-		}
-		
-		public void terminate() {
-			stopped = true;
-		}
-	}
-	
-	private class VideoPositionSyncJob extends Thread {
-		private boolean stopped = false;
-		
-		public void terminate() {
-			stopped = true;
-		}
-		
-		@Override
-		public void run() {
-			super.run();
-			while(!stopped) {				
-				while(mMediaPlayer.isPlaying()) {
-					Log.d(TAG, "Syncing. Current Time: " + mMediaPlayer.getCurrentPosition());
-					communicator.sendVideoPosition(mMediaPlayer.getCurrentPosition());
-					
-					try {
-						sleep(VIDEO_POSITION_SYNC_INTERVAL);
-					} catch (InterruptedException e) {
-						e.printStackTrace();
-					}
-				}
-				try {
-					sleep(VIDEO_POSITION_SYNC_INTERVAL);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-			}
-			stopped = false;
-		}
 	}
 
 	@Override

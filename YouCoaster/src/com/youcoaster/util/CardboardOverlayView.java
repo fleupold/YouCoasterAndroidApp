@@ -1,4 +1,4 @@
-package com.example.youcoaster;
+package com.youcoaster.util;
 
 import android.content.Context;
 import android.graphics.Color;

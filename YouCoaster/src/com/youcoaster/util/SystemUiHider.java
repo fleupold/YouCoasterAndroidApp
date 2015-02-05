@@ -1,4 +1,4 @@
-package com.example.youcoaster.util;
+package com.youcoaster.util;
 
 import android.app.Activity;
 import android.os.Build;

@@ -1,4 +1,4 @@
-package com.example.youcoaster;
+package com.youcoaster.qrfinder;
 
 import android.content.Context;
 import android.content.Intent;
@@ -10,9 +10,12 @@ import android.view.MotionEvent;
 import android.view.ViewGroup.LayoutParams;
 import android.widget.RelativeLayout;
 
+import com.example.youcoaster.R;
 import com.google.vrtoolkit.cardboard.CardboardActivity;
 import com.google.zxing.Result;
 import com.google.zxing.qrcode.QRCodeReader;
+import com.youcoaster.util.CardboardOverlayView;
+import com.youcoaster.util.CardboardOverlayViewListener;
 
 public class QrFinderActivity extends CardboardActivity implements CardboardOverlayViewListener {
 	private static final String TAG = "QrFinderActivity";

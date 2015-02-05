@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.example.youcoaster;
+package com.youcoaster.player;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -39,12 +39,13 @@ import com.google.vrtoolkit.cardboard.CardboardView;
 import com.google.vrtoolkit.cardboard.EyeTransform;
 import com.google.vrtoolkit.cardboard.HeadTransform;
 import com.google.vrtoolkit.cardboard.Viewport;
+import com.youcoaster.util.CardboardMenuView;
 
-class VideoCardboardView extends CardboardView  {
+class PlayerCardboardView extends CardboardView  {
     VideoCardboardRenderer mRenderer;
     private MediaPlayer mMediaPlayer = null;
 
-    public VideoCardboardView(Context context, MediaPlayer mp, VideoMenuView menuView) {
+    public PlayerCardboardView(Context context, MediaPlayer mp, CardboardMenuView menuView) {
         super(context);
 
         setEGLContextClientVersion(2);
@@ -132,9 +133,9 @@ class VideoCardboardView extends CardboardView  {
 
         private MediaPlayer mMediaPlayer;
         private Context context;
-        private VideoMenuView menuView;
+        private CardboardMenuView menuView;
 
-        public VideoCardboardRenderer(Context context, VideoMenuView menuView) {
+        public VideoCardboardRenderer(Context context, CardboardMenuView menuView) {
         	this.context = context;
         	this.menuView = menuView;
             mTriangleVertices = ByteBuffer.allocateDirect(

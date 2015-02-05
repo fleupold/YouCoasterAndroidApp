@@ -1,4 +1,4 @@
-package com.example.youcoaster;
+package com.youcoaster.player;
 
 public interface WebSocketListener {
 	public void onYoutubeLinkReceived(String videoUrl);

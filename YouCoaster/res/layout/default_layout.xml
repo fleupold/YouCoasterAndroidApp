@@ -3,10 +3,10 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#0099cc"
-    tools:context="com.example.youcoaster.ViewerActivity" >
+    android:background="@color/black_overlay"
+    tools:context="com.youcoaster.player.PlayerActivity" >
     
-    <com.example.youcoaster.CardboardOverlayView
+    <com.youcoaster.util.CardboardOverlayView
         android:id="@+id/overlay"
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"

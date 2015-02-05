@@ -1,4 +1,4 @@
-package com.example.youcoaster;
+package com.youcoaster.util;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,7 +15,7 @@ import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-public class VideoMenuView extends LinearLayout {
+public class CardboardMenuView extends LinearLayout {
 	private final static String TAG = "VideoMenuView";
 	
 	private VideoMenuEyeView mLeftView, mRightView;
@@ -23,7 +23,7 @@ public class VideoMenuView extends LinearLayout {
 	
 	private float offset;
 	
-	public VideoMenuView(Context context, List<String> options) {
+	public CardboardMenuView(Context context, List<String> options) {
 		super(context);
 		mainThreadHandler = new Handler(context.getMainLooper());
 		
@@ -78,7 +78,7 @@ public class VideoMenuView extends LinearLayout {
 		mainThreadHandler.post(new Runnable() {
 			@Override
 			public void run() {
-				VideoMenuView.this.setVisibility(requestedVisibility);
+				CardboardMenuView.this.setVisibility(requestedVisibility);
 			}
 		});
 	}
@@ -90,7 +90,7 @@ public class VideoMenuView extends LinearLayout {
 		mainThreadHandler.post(new Runnable() {
 			@Override
 			public void run() {
-				VideoMenuView.this.highlightOption(index);
+				CardboardMenuView.this.highlightOption(index);
 			}
 		});
 		

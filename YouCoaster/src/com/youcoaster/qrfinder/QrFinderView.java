@@ -1,4 +1,4 @@
-package com.example.youcoaster;
+package com.youcoaster.qrfinder;
 
 import java.io.IOException;
 

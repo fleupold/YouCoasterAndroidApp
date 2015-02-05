@@ -1,4 +1,4 @@
-package com.example.youcoaster;
+package com.youcoaster.player;
 
 import java.net.URISyntaxException;
 
