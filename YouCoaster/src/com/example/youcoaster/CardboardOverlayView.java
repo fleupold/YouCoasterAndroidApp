@@ -3,14 +3,15 @@ package com.example.youcoaster;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.os.Handler;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -18,10 +19,16 @@ import android.widget.TextView;
  * Contains two sub-views to provide a simple stereo HUD.
  */
 public class CardboardOverlayView extends LinearLayout {
+	private final static String TAG = "CardboardOverlayView";
+	
     private final CardboardOverlayEyeView mLeftView;
     private final CardboardOverlayEyeView mRightView;
     private AlphaAnimation mTextFadeAnimation;
     private CardboardOverlayViewListener listener;
+    private Handler handler = new Handler();
+    
+    private int duration = 3000;
+    private float offset;
 
     public CardboardOverlayView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -41,16 +48,26 @@ public class CardboardOverlayView extends LinearLayout {
 
         // Set some reasonable defaults.
         setDepthOffset(0.016f);
-        setColor(Color.rgb(150, 255, 180));
+        setColor(Color.WHITE);
         setVisibility(View.VISIBLE);
 
         mTextFadeAnimation = new AlphaAnimation(1.0f, 0.0f);
-        mTextFadeAnimation.setDuration(5000);
+        mTextFadeAnimation.setDuration(1000);
     }
     
     public void setListener(CardboardOverlayViewListener listener) {
     	this.listener = listener;
     }
+    
+    public void incrementDepthOffset() {
+		setDepthOffset(this.offset + .01f);
+		requestLayout();
+	}
+	
+	public void decrementDepthOffset() {
+		setDepthOffset(this.offset - .01f);
+		requestLayout();
+	}
 
     public void show3DToastTemporary(String message, boolean temporary) {
         setText(message);
@@ -65,8 +82,17 @@ public class CardboardOverlayView extends LinearLayout {
         			}
         		}
         	});
-        	startAnimation(mTextFadeAnimation);
+        	handler.postDelayed(new Runnable() {
+				@Override
+				public void run() {					
+					startAnimation(mTextFadeAnimation);
+				}
+			}, duration);
         }
+    }
+    
+    public void setDuratoin(int duration) {
+    	this.duration = duration;
     }
     
     public void hide3DToast() {
@@ -79,8 +105,10 @@ public class CardboardOverlayView extends LinearLayout {
     }
 
     private void setDepthOffset(float offset) {
+    	this.offset = offset;
         mLeftView.setOffset(offset);
         mRightView.setOffset(-offset);
+        Log.d(TAG, "Depth Offset: " + offset);
     }
 
     private void setText(String text) {
@@ -105,16 +133,11 @@ public class CardboardOverlayView extends LinearLayout {
      * This is a helper class for CardboardOverlayView.
      */
     private class CardboardOverlayEyeView extends ViewGroup {
-        private final ImageView imageView;
         private final TextView textView;
         private float offset;
 
         public CardboardOverlayEyeView(Context context, AttributeSet attrs) {
             super(context, attrs);
-            imageView = new ImageView(context, attrs);
-            imageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-            imageView.setAdjustViewBounds(true);  // Preserve aspect ratio.
-            addView(imageView);
 
             textView = new TextView(context, attrs);
             textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14.0f);
@@ -125,7 +148,6 @@ public class CardboardOverlayView extends LinearLayout {
         }
 
         public void setColor(int color) {
-            imageView.setColorFilter(color);
             textView.setTextColor(color);
         }
 
@@ -147,11 +169,6 @@ public class CardboardOverlayView extends LinearLayout {
             final int width = right - left;
             final int height = bottom - top;
 
-            // The size of the image, given as a fraction of the dimension as a ViewGroup.
-            // We multiply both width and heading with this number to compute the image's bounding
-            // box. Inside the box, the image is the horizontally and vertically centered.
-            final float imageSize = 0.12f;
-
             // The fraction of this ViewGroup's height by which we shift the image off the
             // ViewGroup's center. Positive values shift downwards, negative values shift upwards.
             final float verticalImageOffset = -0.07f;
@@ -159,15 +176,9 @@ public class CardboardOverlayView extends LinearLayout {
             // Vertical position of the text, specified in fractions of this ViewGroup's height.
             final float verticalTextPos = 0.52f;
 
-            // Layout ImageView
-            float imageMargin = (1.0f - imageSize) / 2.0f;
-            float leftMargin = (int) (width * (imageMargin + offset));
-            float topMargin = (int) (height * (imageMargin + verticalImageOffset));
-            imageView.layout(
-                (int) leftMargin, (int) topMargin,
-                (int) (leftMargin + width * imageSize), (int) (topMargin + height * imageSize));
-
             // Layout TextView
+            float leftMargin = (int) (width * (offset));
+            float topMargin = (int) (height * (verticalImageOffset));
             leftMargin = offset * width;
             topMargin = height * verticalTextPos;
             textView.layout(

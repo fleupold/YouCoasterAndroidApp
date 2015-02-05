@@ -21,6 +21,7 @@ public class WebSocketCommunicator {
 		try {
 			mSocket = IO.socket("http://www.youcoaster.com");
 			//mSocket = IO.socket("http://192.168.178.28:3000");
+			//mSocket = IO.socket("http://172.16.19.68:3000");
 			mSocket.on(Socket.EVENT_CONNECT, new Emitter.Listener() {
 				@Override
 				public void call(Object... arg0) {
@@ -65,6 +66,10 @@ public class WebSocketCommunicator {
 		}        
 	}
 	
+	public void close() {
+		mSocket.close();
+	}
+	
 	public void joinRoom(String newRoom) {
 		try {
 			if (mSocketRoom != null) {
@@ -101,6 +106,27 @@ public class WebSocketCommunicator {
     	try{
     		socketData.put("room", mSocketRoom);
         	mSocket.emit("cardboardPlaying", socketData);
+    	} catch (JSONException e) {
+    		e.printStackTrace();
+    	}
+	}
+	
+	public void sendReplay() {
+		JSONObject socketData = new JSONObject();
+    	try{
+    		socketData.put("room", mSocketRoom);
+        	mSocket.emit("replayWeb", socketData);
+    	} catch (JSONException e) {
+    		e.printStackTrace();
+    	}
+	}
+	
+	public void sendVideoPosition(int positionMs) {
+		JSONObject socketData = new JSONObject();
+    	try{
+    		socketData.put("room", mSocketRoom);
+        	socketData.put("position", positionMs / 1000.0f);
+        	mSocket.emit("cardboardVideoPosition", socketData);
     	} catch (JSONException e) {
     		e.printStackTrace();
     	}

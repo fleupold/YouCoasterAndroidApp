@@ -6,6 +6,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Vibrator;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.ViewGroup.LayoutParams;
 import android.widget.RelativeLayout;
 
@@ -40,16 +41,19 @@ public class QrFinderActivity extends CardboardActivity implements CardboardOver
     	
     	setCardboardView(qrFinderView);    	
     	main.addView(qrFinderView, 0);
-    	showQrCodeInstructions1();
+    	showQrCodeInstructions1(); 	
 	}
 	
 	private void showQrCodeInstructions1() {
 		currentInstructionStep = 1;
-    	overlayView.show3DToastTemporary("On another device: \n Go to youcoaster.com, \n chose Experience and click \n cardboard icon at the top", true);
+		overlayView.setDuratoin(5000);
+    	//overlayView.show3DToastTemporary("Pull magnet to \n scan QRCode from \n youcoaster.com", true);
+		overlayView.show3DToastTemporary("On other device: \n visit youcoaster.com, \n chose experience & \n click cardboard icon", true);
 	}
 	
 	private void showQrCodeInstructions2() {
 		currentInstructionStep = 2;
+		overlayView.setDuratoin(3000);
     	overlayView.show3DToastTemporary("On this device: \n Scan QR Code by \n pulling the magnet ", true);
 	}
 	
@@ -60,6 +64,7 @@ public class QrFinderActivity extends CardboardActivity implements CardboardOver
 		try {
 			result = reader.decode(qrFinderView.getCameraImage());
 		} catch (com.google.zxing.NotFoundException e) {
+			overlayView.setDuratoin(3000);
 			overlayView.show3DToastTemporary("No Code Found.\nPlease try Again!", true);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -69,6 +74,12 @@ public class QrFinderActivity extends CardboardActivity implements CardboardOver
 			setResult(RESULT_OK, new Intent(TAG, Uri.parse(result.getText())));
 			finish();
 		}
+    }
+	
+	@Override
+    public boolean onTouchEvent(MotionEvent event) {
+    	onCardboardTrigger();
+    	return super.onTouchEvent(event);
     }
 	
 	@Override
@@ -88,4 +99,18 @@ public class QrFinderActivity extends CardboardActivity implements CardboardOver
 		}
 		
 	}
+	
+	/*
+	@Override
+	public boolean onKeyDown(int keyCode, KeyEvent event) {
+		//Used to find the right offset for the overlay view
+		if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
+			overlayView.decrementDepthOffset();
+		}
+		if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
+			overlayView.incrementDepthOffset();
+		}
+		return super.onKeyDown(keyCode, event);
+	}
+	*/
 }

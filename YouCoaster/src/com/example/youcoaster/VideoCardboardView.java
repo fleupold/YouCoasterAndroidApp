@@ -23,13 +23,18 @@ import java.nio.FloatBuffer;
 import javax.microedition.khronos.egl.EGLConfig;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.SurfaceTexture;
-import android.media.MediaPlayer;
 import android.opengl.GLES20;
+import android.opengl.GLUtils;
 import android.opengl.Matrix;
 import android.util.Log;
 import android.view.Surface;
+import android.view.View;
+import at.aau.itec.android.mediaplayer.MediaPlayer;
 
+import com.example.youcoaster.R;
 import com.google.vrtoolkit.cardboard.CardboardView;
 import com.google.vrtoolkit.cardboard.EyeTransform;
 import com.google.vrtoolkit.cardboard.HeadTransform;
@@ -39,12 +44,12 @@ class VideoCardboardView extends CardboardView  {
     VideoCardboardRenderer mRenderer;
     private MediaPlayer mMediaPlayer = null;
 
-    public VideoCardboardView(Context context, MediaPlayer mp) {
+    public VideoCardboardView(Context context, MediaPlayer mp, VideoMenuView menuView) {
         super(context);
 
         setEGLContextClientVersion(2);
         mMediaPlayer = mp;
-        mRenderer = new VideoCardboardRenderer(context);
+        mRenderer = new VideoCardboardRenderer(context, menuView);
         mRenderer.setMediaPlayer(mMediaPlayer);
         setRenderer(mRenderer);
     }
@@ -126,8 +131,12 @@ class VideoCardboardView extends CardboardView  {
         private static int GL_TEXTURE_EXTERNAL_OES = 0x8D65;
 
         private MediaPlayer mMediaPlayer;
+        private Context context;
+        private VideoMenuView menuView;
 
-        public VideoCardboardRenderer(Context context) {
+        public VideoCardboardRenderer(Context context, VideoMenuView menuView) {
+        	this.context = context;
+        	this.menuView = menuView;
             mTriangleVertices = ByteBuffer.allocateDirect(
                 mTriangleVerticesData.length * FLOAT_SIZE_BYTES)
                     .order(ByteOrder.nativeOrder()).asFloatBuffer();
@@ -174,7 +183,6 @@ class VideoCardboardView extends CardboardView  {
                 throw new RuntimeException("Could not get attrib location for uSTMatrix");
             }
 
-
             int[] textures = new int[1];
             GLES20.glGenTextures(1, textures, 0);
 
@@ -186,6 +194,9 @@ class VideoCardboardView extends CardboardView  {
                                    GLES20.GL_NEAREST);
             GLES20.glTexParameterf(GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_MAG_FILTER,
                                    GLES20.GL_LINEAR);
+            
+            Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.icon);
+            GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
 
             /*
              * Create the SurfaceTexture that will feed this textureID,
@@ -197,7 +208,6 @@ class VideoCardboardView extends CardboardView  {
             if (mMediaPlayer != null) {
                 Surface surface = new Surface(mSurface);
                 mMediaPlayer.setSurface(surface);   
-                surface.release();
             }
             
             synchronized(this) {
@@ -328,7 +338,20 @@ class VideoCardboardView extends CardboardView  {
                     mSurface.getTransformMatrix(mSTMatrix);
                     updateSurface = false;
                 }
+
+                final float[] angles = new float[3];
+                headTransform.getEulerAngles(angles, 0);
+                
+                //Needs to happen on main thread
+                if (menuView.getVisibility() == View.VISIBLE) {                	
+                	if (angles[0] > 0) {
+                		menuView.requestHighlightOption(0);
+                	} else {                	
+                		menuView.requestHighlightOption(1);
+                	}
+                }
             }
+            
 		}
 
 		@Override
