@@ -131,6 +131,8 @@ public class PlayerActivity extends CardboardActivity implements OnPreparedListe
     	super.onActivityResult(requestCode, resultCode, data);
     	if (requestCode == QR_FINDER_REQUEST_CODE && resultCode ==  RESULT_OK) {
     		launchExperience(data.getData());
+    	} else {
+    		finish();
     	}
     }
     

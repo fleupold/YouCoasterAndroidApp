@@ -47,6 +47,9 @@ public class QrFinderActivity extends CardboardActivity implements CardboardOver
     	showQrCodeInstructions1(); 	
 	}
 	
+	@Override
+	public void onBackPressed() {}
+	
 	private void showQrCodeInstructions1() {
 		currentInstructionStep = 1;
 		overlayView.setDuratoin(5000);
@@ -62,7 +65,6 @@ public class QrFinderActivity extends CardboardActivity implements CardboardOver
 	
 	private void scanQrCode() {
     	QRCodeReader reader = new QRCodeReader();
-    	currentInstructionStep = -1;
     	Result result = null;
 		try {
 			result = reader.decode(qrFinderView.getCameraImage());
@@ -95,6 +97,7 @@ public class QrFinderActivity extends CardboardActivity implements CardboardOver
 
 	@Override
 	public void on3DToastDismissed() {
+		Log.d(TAG, "Instructions Step: " + currentInstructionStep);
 		if (currentInstructionStep == 1) {
 			showQrCodeInstructions2();
 		} else if (currentInstructionStep == 2) {

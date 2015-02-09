@@ -43,6 +43,18 @@ public class QrFinderView extends CardboardView {
 	public BinaryBitmap getCameraImage() {
 		return mRenderer.getLastPreviewData();
 	}
+	
+	@Override
+	public void onPause() {
+		mRenderer.onRendererShutdown();
+		super.onPause();
+	}
+	
+	@Override
+	public void onResume() {
+		mRenderer.startPreview();
+		super.onResume();
+	}
 
 	private static class QrFinderRenderer implements StereoRenderer, AutoFocusCallback, Camera.PreviewCallback {	
 		private static final int AUTO_FOCUS_REFRESH_INTERVAL = 5000;
@@ -109,11 +121,12 @@ public class QrFinderView extends CardboardView {
 	        mTextureID = mFullScreen.createTextureObject();
 			mSurface = new SurfaceTexture(mTextureID);
 			startPreview();
-			mCamera.autoFocus(this);
 		}
 		
 		public void startPreview() {
-			mCamera = Camera.open();
+			if (mCamera == null) {
+				mCamera = Camera.open();
+			}
 			try {
 				mCamera.setPreviewTexture(mSurface);
 			} catch (IOException e) {
@@ -121,6 +134,7 @@ public class QrFinderView extends CardboardView {
 			}
 			mCamera.startPreview();
 			mCamera.setPreviewCallback(this);
+			mCamera.autoFocus(this);
 		}
 
 		@Override

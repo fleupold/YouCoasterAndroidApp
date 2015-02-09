@@ -26,6 +26,7 @@ public class CardboardOverlayView extends LinearLayout {
     private AlphaAnimation mTextFadeAnimation;
     private CardboardOverlayViewListener listener;
     private Handler handler = new Handler();
+    private Runnable fadeOutRunnable;
     
     private int duration = 3000;
     private float offset;
@@ -82,12 +83,15 @@ public class CardboardOverlayView extends LinearLayout {
         			}
         		}
         	});
-        	handler.postDelayed(new Runnable() {
-				@Override
-				public void run() {					
-					startAnimation(mTextFadeAnimation);
+        	
+        	handler.removeCallbacks(fadeOutRunnable);
+        	fadeOutRunnable = new Runnable() {
+        		@Override
+				public void run() {			
+        			startAnimation(mTextFadeAnimation);
 				}
-			}, duration);
+        	};
+        	handler.postDelayed(fadeOutRunnable, duration);
         }
     }
     
