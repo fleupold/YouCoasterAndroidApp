@@ -54,7 +54,7 @@ public class QrFinderActivity extends CardboardActivity implements CardboardOver
 		currentInstructionStep = 1;
 		overlayView.setDuratoin(5000);
     	//overlayView.show3DToastTemporary("Pull magnet to \n scan QRCode from \n youcoaster.com", true);
-		overlayView.show3DToastTemporary("On other device: \n visit youcoaster.com, \n chose experience & \n click cardboard icon", true);
+		overlayView.show3DToastTemporary("On other device: \n visit youcoaster.com, \n chose an experience \n to get a QRCode", true);
 	}
 	
 	private void showQrCodeInstructions2() {
