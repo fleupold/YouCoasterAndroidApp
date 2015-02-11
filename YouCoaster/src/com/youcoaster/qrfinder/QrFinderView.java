@@ -5,21 +5,17 @@ import java.io.IOException;
 import javax.microedition.khronos.egl.EGLConfig;
 
 import android.content.Context;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
 import android.hardware.Camera.AutoFocusCallback;
 import android.hardware.Camera.Size;
 import android.opengl.GLES20;
-import android.opengl.GLUtils;
 import android.opengl.Matrix;
 import android.os.Handler;
 import android.util.Log;
 
 import com.android.grafika.gles.FullFrameRect;
 import com.android.grafika.gles.Texture2dProgram;
-import com.youcoaster.R;
 import com.google.vrtoolkit.cardboard.CardboardView;
 import com.google.vrtoolkit.cardboard.EyeTransform;
 import com.google.vrtoolkit.cardboard.HeadTransform;
@@ -36,7 +32,7 @@ public class QrFinderView extends CardboardView {
     
 	public QrFinderView(Context context) {
 		super(context);
-		mRenderer = new QrFinderRenderer(context);
+		mRenderer = new QrFinderRenderer();
 		setRenderer(mRenderer);
 	}
 	
@@ -60,8 +56,8 @@ public class QrFinderView extends CardboardView {
 		private static final int AUTO_FOCUS_REFRESH_INTERVAL = 5000;
 		
 		SurfaceTexture mSurface;
+		boolean surfaceCreated;
 		Camera mCamera;
-		private Context context;
 		byte[] lastPreviewData;
 		private final float[] mSTMatrix = new float[16];
 		private final float[] mView = new float[16];
@@ -69,9 +65,7 @@ public class QrFinderView extends CardboardView {
 		FullFrameRect mFullScreen;
 		int mTextureID;
 		
-		public QrFinderRenderer(Context context) {
-			this.context = context;
-		}
+		Handler autoFocusHandler = new Handler();
 		
 		@Override
 		public void onDrawEye(EyeTransform transform) {
@@ -90,8 +84,6 @@ public class QrFinderView extends CardboardView {
 	        //Different possible texture parameters, e.g. GL10.GL_CLAMP_TO_EDGE
 	        GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_REPEAT);
 	        GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_REPEAT);
-	        Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.icon);
-            GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
 		}
 
 		@Override
@@ -120,10 +112,14 @@ public class QrFinderView extends CardboardView {
 	                new Texture2dProgram(Texture2dProgram.ProgramType.TEXTURE_EXT));
 	        mTextureID = mFullScreen.createTextureObject();
 			mSurface = new SurfaceTexture(mTextureID);
+			surfaceCreated = true;
 			startPreview();
 		}
 		
 		public void startPreview() {
+			if (!surfaceCreated) {
+				return;
+			}
 			if (mCamera == null) {
 				mCamera = Camera.open();
 			}
@@ -141,7 +137,7 @@ public class QrFinderView extends CardboardView {
 		public void onAutoFocus(boolean success, Camera camera) {
 			Log.d(TAG, "Auto Focus: " + success);
 			final AutoFocusCallback callback = this;
-			new Handler().postDelayed(new Runnable() {
+			autoFocusHandler.postDelayed(new Runnable() {
 				@Override
 				public void run() {
 					if (mCamera != null) {						
