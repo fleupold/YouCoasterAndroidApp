@@ -1,4 +1,4 @@
-package com.youcoaster.player;
+	package com.youcoaster.player;
 
 import java.net.URISyntaxException;
 
@@ -67,6 +67,7 @@ public class WebSocketCommunicator {
 	}
 	
 	public void close() {
+		mSocket.off();
 		mSocket.close();
 	}
 	
