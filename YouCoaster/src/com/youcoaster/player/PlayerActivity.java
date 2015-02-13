@@ -162,12 +162,14 @@ public class PlayerActivity extends CardboardActivity implements OnPreparedListe
     		return;
     	}
    
-   		if (!mMediaPlayer.isPlaying()) {   			
-   			receivedPlay();
-   			communicator.sendPlaying();
-   		} else {   			
-   			videoCardboardView.recenter();
-   		}
+    	if (videoCardboardView != null) {
+    		if (!mMediaPlayer.isPlaying()) {   			
+    			receivedPlay();
+    			communicator.sendPlaying();
+    		} else {   			
+    			videoCardboardView.recenter();
+    		}    		
+    	}
    	}
     
 	@Override
