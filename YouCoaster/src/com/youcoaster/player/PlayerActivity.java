@@ -41,6 +41,7 @@ public class PlayerActivity extends CardboardActivity implements OnPreparedListe
 	
 	private MediaPlayer mMediaPlayer;
 	private boolean mIsMediaPlayerPrepared;
+	private boolean mIsMediaPlayerStarted;
 	private Vibrator mVibrator;
 	private String mVid;
 	private int startTimeMs;
@@ -48,6 +49,7 @@ public class PlayerActivity extends CardboardActivity implements OnPreparedListe
 	
 	private VideoPositionSyncJob syncJob;
 	private ExperienceEndWatchdog endWatchdog;
+	private Handler mainThreadHandler;
 		
 	private void launchExperience(Uri uri) {
     	videoMenuView.setVisibility(View.INVISIBLE);
@@ -59,6 +61,7 @@ public class PlayerActivity extends CardboardActivity implements OnPreparedListe
 
 		mMediaPlayer = new MediaPlayer();
 		mIsMediaPlayerPrepared = false;
+		mIsMediaPlayerStarted = false;
 		mMediaPlayer.setOnPreparedListener(this);
 		mMediaPlayer.setOnSeekCompleteListener(this);
 		mMediaPlayer.setOnCompletionListener(this);
@@ -84,6 +87,8 @@ public class PlayerActivity extends CardboardActivity implements OnPreparedListe
         Log.d(TAG, "onCreate");
         mVibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
         setContentView(R.layout.default_layout);	
+        
+        mainThreadHandler = new Handler(getMainLooper());
         
         //Overlay View
 		main = (RelativeLayout) findViewById(R.id.main_layout);
@@ -210,19 +215,32 @@ public class PlayerActivity extends CardboardActivity implements OnPreparedListe
 	@Override
 	public void receivedPlay() {
 		if (mIsMediaPlayerPrepared && !mMediaPlayer.isPlaying()) {
+			
 			videoMenuView.requestSetVisible(false);
 			mMediaPlayer.start();
+			mIsMediaPlayerStarted = true;
 			Log.d(TAG, "Play current time: " + mMediaPlayer.getCurrentPosition());
 		}
+	}
+	
+	@Override
+	public void receivedExit() {
+		mMediaPlayer.stop();
+		mainThreadHandler.post(new Runnable() {
+			@Override
+			public void run() {				
+				launchQrFinder();
+			}
+		});
 	}
 
 	@Override
 	public void on3DToastDismissed() {
 		if (mIsMediaPlayerPrepared) {
-			new Handler().postDelayed(new Runnable() {
+			mainThreadHandler.postDelayed(new Runnable() {
 				@Override
 				public void run() {
-					if (!mMediaPlayer.isPlaying() && videoMenuView.getVisibility() != View.VISIBLE) {						
+					if (!mMediaPlayer.isPlaying() && !mIsMediaPlayerStarted && videoMenuView.getVisibility() != View.VISIBLE) {						
 						showPlayerInstructions();
 					}
 				}
