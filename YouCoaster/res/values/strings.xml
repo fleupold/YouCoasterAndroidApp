@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
     <string name="app_name">YouCoaster</string>
-    <string name="dummy_button">Dummy Button</string>
-    <string name="dummy_content">DUMMY\nCONTENT</string>
-
+    <string name="qr_instructions"><![CDATA[YouCoaster.com<br /><b>Pull magnet or tap</b><br /> to scan QRCode]]></string>
+    <string name="qr_error"><![CDATA[<b>No Code Found.</b><br />Please try Again!]]></string>
+	<string name="player_loading"><![CDATA[Launching Experience]]></string>
+	<string name="player_instructions"><![CDATA[Video Ready!<br /><b>Pull magnet to start</b><br />If video drifts, pull<br />magnet to recenter]]></string>
 </resources>

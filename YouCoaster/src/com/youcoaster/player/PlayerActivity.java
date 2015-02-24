@@ -53,11 +53,11 @@ public class PlayerActivity extends CardboardActivity implements OnPreparedListe
 		
 	private void launchExperience(Uri uri) {
     	videoMenuView.setVisibility(View.INVISIBLE);
-		overlayView.show3DToastTemporary("Launching Experience", false);
+		overlayView.show3DToastTemporary(getString(R.string.player_loading), false);
 		
 		mVid = uri.getQueryParameter("vid");
-		startTimeMs = Integer.valueOf(uri.getQueryParameter("start")) * 1000; //Converting from seconds into ms
-		endTimeMs = Integer.valueOf(uri.getQueryParameter("end")) * 1000;
+		startTimeMs = Integer.valueOf(uri.getQueryParameter("s")) * 1000; //Converting from seconds into ms
+		endTimeMs = Integer.valueOf(uri.getQueryParameter("e")) * 1000;
 
 		mMediaPlayer = new MediaPlayer();
 		mIsMediaPlayerPrepared = false;
@@ -67,7 +67,7 @@ public class PlayerActivity extends CardboardActivity implements OnPreparedListe
 		mMediaPlayer.setOnCompletionListener(this);
 		
         communicator =  new WebSocketCommunicator(this);
-		communicator.joinRoom(uri.getQueryParameter("room"));
+		communicator.joinRoom(uri.getQueryParameter("r"));
 		communicator.requestVideo(mVid);
         	
 		videoCardboardView = new PlayerCardboardView(getBaseContext(), mMediaPlayer, videoMenuView);
@@ -249,7 +249,7 @@ public class PlayerActivity extends CardboardActivity implements OnPreparedListe
 	}
 	
 	private void showPlayerInstructions() {
-		overlayView.show3DToastTemporary("Video Ready!\nPull magnet to start\n Then, pull magnet to\nrecenter view", true);
+		overlayView.show3DToastTemporary(getString(R.string.player_instructions), true);
 	}
 
 	@Override

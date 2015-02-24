@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.youcoaster"
-    android:versionCode="3"
-    android:versionName="1.2" >
+    android:versionCode="5"
+    android:versionName="1.4" >
 
     <uses-permission android:name="android.permission.NFC" />
     <uses-permission android:name="android.permission.VIBRATE" />
@@ -26,8 +26,8 @@
             android:theme="@style/FullscreenTheme" >
             <intent-filter>
     			<data android:scheme="http"
-    			    android:host="youcoaster.com"
-    			    android:pathPrefix="/launchCardboard" />
+    			    android:host="yc.com"
+    			    android:pathPrefix="lC" />
     			<action android:name="android.intent.action.VIEW" />
     			<category android:name="android.intent.category.DEFAULT" />
     			<category android:name="android.intent.category.BROWSABLE" />

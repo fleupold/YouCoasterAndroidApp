@@ -19,8 +19,8 @@ public class WebSocketCommunicator {
 	
 	public WebSocketCommunicator(final WebSocketListener listener) {
 		try {
-			//mSocket = IO.socket("http://www.youcoaster.com");
-			mSocket = IO.socket("http://192.168.178.28:3000");
+			mSocket = IO.socket("http://www.youcoaster.com");
+			//mSocket = IO.socket("http://192.168.178.28:3000");
 			//mSocket = IO.socket("http://172.16.19.68:3000");
 			mSocket.on(Socket.EVENT_CONNECT, new Emitter.Listener() {
 				@Override

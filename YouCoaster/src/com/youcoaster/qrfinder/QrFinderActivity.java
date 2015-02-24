@@ -24,8 +24,6 @@ public class QrFinderActivity extends CardboardActivity implements CardboardOver
 	private CardboardOverlayView overlayView;
 	private QrFinderView qrFinderView;
 	
-	private int currentInstructionStep;
-	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -44,23 +42,15 @@ public class QrFinderActivity extends CardboardActivity implements CardboardOver
     	
     	setCardboardView(qrFinderView);    	
     	main.addView(qrFinderView, 0);
-    	showQrCodeInstructions1(); 	
+    	showQrCodeInstructions();
 	}
 	
 	@Override
 	public void onBackPressed() {}
 	
-	private void showQrCodeInstructions1() {
-		currentInstructionStep = 1;
+	private void showQrCodeInstructions() {
 		overlayView.setDuratoin(5000);
-    	//overlayView.show3DToastTemporary("Pull magnet to \n scan QRCode from \n youcoaster.com", true);
-		overlayView.show3DToastTemporary("On other device: \n visit youcoaster.com, \n chose an experience \n to get a QRCode", true);
-	}
-	
-	private void showQrCodeInstructions2() {
-		currentInstructionStep = 2;
-		overlayView.setDuratoin(3000);
-    	overlayView.show3DToastTemporary("On this device: \n Scan QR Code by \n pulling the magnet ", true);
+		overlayView.show3DToastTemporary(getString(R.string.qr_instructions), true);
 	}
 	
 	private void scanQrCode() {
@@ -70,7 +60,7 @@ public class QrFinderActivity extends CardboardActivity implements CardboardOver
 			result = reader.decode(qrFinderView.getCameraImage());
 		} catch (com.google.zxing.NotFoundException e) {
 			overlayView.setDuratoin(3000);
-			overlayView.show3DToastTemporary("No Code Found.\nPlease try Again!", true);
+			overlayView.show3DToastTemporary(getString(R.string.qr_error), true);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -97,13 +87,7 @@ public class QrFinderActivity extends CardboardActivity implements CardboardOver
 
 	@Override
 	public void on3DToastDismissed() {
-		Log.d(TAG, "Instructions Step: " + currentInstructionStep);
-		if (currentInstructionStep == 1) {
-			showQrCodeInstructions2();
-		} else if (currentInstructionStep == 2) {
-			showQrCodeInstructions1();
-		}
-		
+		showQrCodeInstructions();
 	}
 	
 	/*

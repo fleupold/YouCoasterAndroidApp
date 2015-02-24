@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.os.Handler;
+import android.text.Html;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.util.TypedValue;
@@ -145,7 +146,6 @@ public class CardboardOverlayView extends LinearLayout {
 
             textView = new TextView(context, attrs);
             textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14.0f);
-            textView.setTypeface(textView.getTypeface(), Typeface.BOLD);
             textView.setGravity(Gravity.CENTER);
             textView.setShadowLayer(3.0f, 0.0f, 0.0f, Color.DKGRAY);
             addView(textView);
@@ -156,7 +156,7 @@ public class CardboardOverlayView extends LinearLayout {
         }
 
         public void setText(String text) {
-            textView.setText(text);
+            textView.setText(Html.fromHtml(text));
         }
 
         public void setTextViewAlpha(float alpha) {
